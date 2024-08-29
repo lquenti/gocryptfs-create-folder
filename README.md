@@ -119,7 +119,7 @@ well though.
 ## Listing decrypted filenames
 
 ```
-usage: gocryptfs-ls.py [-h] [--aessiv] [--masterkey MASTERKEY] [--password PASSWORD] [--config CONFIG] path
+usage: gocryptfs-ls.py [-h] [--aessiv] [--masterkey MASTERKEY] [--password PASSWORD] [--config CONFIG] [-r] path
 
 List decoded filenames in a gocryptfs volume
 
@@ -133,4 +133,7 @@ options:
                         Masterkey as hex string representation
   --password PASSWORD   Password to unlock config file
   --config CONFIG       Path to gocryptfs.conf configuration file
+  -r, --recurse         Enable visiting all subdirectories
 ```
+
+Use `gocryptfs-ls.py directory` to be asked for encrypted volume password and list the filenames encrypted in 'directory' with their unencrypted counterpart.
