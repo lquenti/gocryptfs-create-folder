@@ -96,6 +96,7 @@ if __name__ == '__main__':
     parser.add_argument('--masterkey', type=decode_masterkey, help="Masterkey as hex string representation")
     parser.add_argument('--password', help="Password to unlock config file")
     parser.add_argument('--config', help="Path to gocryptfs.conf configuration file")
+    parser.add_argument('-r', '--recurse', help="Enable visiting all subdirectories", action="store_true", default=False)
     parser.add_argument('path', help="Encrypted directory to list from")
     args = parser.parse_args()
 
@@ -116,6 +117,8 @@ if __name__ == '__main__':
     
     for root, dirs, files in os.walk(args.path):
         if root != args.path:
+            if not args.recurse:
+                sys.exit(0)
             droot = name_decode(eme, root)
         else:
             droot = root
@@ -127,5 +130,5 @@ if __name__ == '__main__':
                 # replace the longname with the base64 string found inside that file
                 it = open(os.path.join(root, it)).read()
             pname = os.path.join(root, it)
-            print('%s -> %s' % (it, name_decode(eme, pname)))
+            print('%s --> %s' % (it, name_decode(eme, pname)))
         print('\n')
