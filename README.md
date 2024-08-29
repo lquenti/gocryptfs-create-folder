@@ -115,3 +115,22 @@ underlying directory content has changed in the meantime. This applies to
 example. Also, it might be possible that very long words (22+ characters) are
 misinterpreted as encrypted filenames. Most of the time it seems to work pretty
 well though.
+
+## Listing decrypted filenames
+
+```
+usage: gocryptfs-ls.py [-h] [--aessiv] [--masterkey MASTERKEY] [--password PASSWORD] [--config CONFIG] path
+
+List decoded filenames in a gocryptfs volume
+
+positional arguments:
+  path                  Encrypted directory to list from
+
+options:
+  -h, --help            show this help message and exit
+  --aessiv              AES-SIV encryption
+  --masterkey MASTERKEY
+                        Masterkey as hex string representation
+  --password PASSWORD   Password to unlock config file
+  --config CONFIG       Path to gocryptfs.conf configuration file
+```
