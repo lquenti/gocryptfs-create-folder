@@ -3,6 +3,7 @@ import argparse
 import getpass
 import sys
 import os
+import base64
 from struct import pack
 
 from gocryptfs import GocryptfsConfig, decode_masterkey
@@ -29,37 +30,6 @@ def get_emekey(masterkey):
                context=b"EME filename encryption")
     return key
 
-def b64(s):
-    "Base64 encode"
-    # 3 octets become 4 sextets (inflates input ~33%): 6 | 2 4 | 4 2 | 6
-    # i.o.w. picks 3 bytes and emits 4 (each sextet indexing in the 64 chars alphabet)
-    ob = 0 # bytes emitted (not counting CRLF)
-    p = 0
-    outsize = (len(s)//3+1)*4 # inflates input of ~33%
-    result = bytearray(outsize)
-    alphabet = bytearray(b'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_')
-    word=0
-    todo=0
-    for c in s:
-        word = (word<<8) | c
-        word &= 0xFFFF # Python has unlimited length integers!
-        todo+=8
-        while todo >= 6:
-            todo-=6
-            result[p] = alphabet[(word>>todo) & 0x3F]
-            p+=1
-            ob+=1
-    if todo == 2:
-        result[p] = alphabet[(word&3)<<4]
-        result[p+1] = ord('=')
-        result[p+2] = ord('=')
-        p+=3
-    elif todo == 4:
-        result[p] = alphabet[(word&0xF)<<2]
-        result[p+1] = ord('=')
-        p+=2
-    return result[:p]
-
 def pad16(s):
     "PKCS#7 padding"
     blocks = (len(s)+15) // 16
@@ -77,7 +47,8 @@ def name_encode(eme, name):
     bname = os.path.basename(name).encode()
     bname = pad16(bname)
     bname = eme.encrypt_iv(diriv, bname)
-    bname = b64(bname)
+    # gocryptfs driver does not like '=' in base64 encoded names; base64 module dislikes their absence
+    bname = base64.urlsafe_b64encode(bname).strip(b'=').decode()
     return bname
 
 def encrypt_gcm_block(key, blockno, fileid, block):
@@ -123,17 +94,24 @@ if __name__ == '__main__':
 
     fpin = open(args.pathname, 'rb')
 
-    # gocryptfs driver does not like '=' in base64 encoded names, base64 module dislikes their absence
-    ename = name_encode(eme, args.pathname).decode().strip('=')
+    ename = name_encode(eme, args.pathname)
+    # handle very long encoded names
+    if len(ename) > 255:
+        # gets the SHA-256 hash, base64 encoded, of the encrypted longname
+        hash = base64.urlsafe_b64encode(SHA256.new(ename.encode()).digest()).strip(b'=').decode()
+        # stores the encrypted longname
+        lname = os.path.join(os.path.dirname(args.pathname), 'gocryptfs.longname.%s.name'%hash)
+        open(lname, 'w').write(ename)
+        # replace with the fake shortname
+        ename = 'gocryptfs.longname.' + hash
     ename = os.path.join(os.path.dirname(args.pathname), ename)
     fpout = open(ename, 'wb')
     fpout.write(b'\x00\x02') # magic couple
     fileid = Random.get_random_bytes(16) # random 128-bit FileID
     fpout.write(fileid)
 
-    buf = b'1'
     n = 0
-    while buf:
+    while True:
         buf = fpin.read(4096)
         if not buf: break
         fpout.write(encrypt_gcm_block(key, n, fileid, buf))
