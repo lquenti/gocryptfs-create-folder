@@ -137,3 +137,22 @@ options:
 ```
 
 Use `gocryptfs-ls.py directory` to be asked for encrypted volume password and list the filenames encrypted in 'directory' with their unencrypted counterpart.
+
+## Encrypting a new file
+
+```
+usage: gocryptfs-encrypt.py [-h] [--aessiv] [--masterkey MASTERKEY] [--password PASSWORD] [--config CONFIG] pathname
+
+Replace a plain file in a gocryptfs volume with its encrypted version
+
+positional arguments:
+  pathname              pathname of the unencrypted file to process
+
+options:
+  -h, --help            show this help message and exit
+  --aessiv              AES-SIV encryption
+  --masterkey MASTERKEY
+                        Masterkey as hex string representation
+  --password PASSWORD   Password to unlock config file
+  --config CONFIG       Path to gocryptfs.conf configuration file
+```

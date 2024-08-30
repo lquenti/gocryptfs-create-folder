@@ -22,6 +22,9 @@ class AES256_EME:
     def decrypt_iv(p, iv, s):
         return p.transform(iv, s)
 
+    def encrypt_iv(p, iv, s):
+        return p.transform(iv, s, 'enc')
+
     """Transform - EME-encrypt or EME-decrypt, according to "direction"
     The data in "inputData" is en- or decrypted with the block ciper under
     "tweak" (also known as IV).
