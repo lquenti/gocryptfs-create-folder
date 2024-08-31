@@ -4,6 +4,7 @@ import getpass
 import sys
 import os
 from struct import pack
+import base64
 
 from gocryptfs import GocryptfsConfig, decode_masterkey
 from aes256eme import AES256_EME
@@ -23,34 +24,6 @@ def get_emekey(masterkey):
     key = HKDF(masterkey, salt=b"", key_len=32, hashmod=SHA256,
                context=b"EME filename encryption")
     return key
-
-def unb64(s, fmt=4):
-    "Base64 decode"
-    i = 0
-    result = bytearray()
-    alphabet = bytearray(b'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/')
-    if fmt & 4:
-        alphabet = alphabet.replace(b'+/', b'-_')
-    for c in s:
-        if c in (61,10,13): continue
-        n = alphabet.find(pack('B',c))
-        if n < 0:
-            raise BaseException("BAD INPUT '%s'"%c)
-        if i == 0: # push 6 bits
-            j = n << 2
-        elif i == 1: # pop 6, pick 2, push 4
-            j |= ((n & 0b110000) >> 4)
-            result += pack('B',j)
-            j = (n & 0b001111) << 4
-        elif i == 2: # pop 4, pick 4, push 2
-            j |= ((n & 0b111100) >> 2)
-            result += pack('B',j)
-            j = (n & 0b11) << 6
-        elif i == 3: # pop 2, pick 6
-            j |= n
-            result += pack('B',j)
-        i = (i+1)%4
-    return result
 
 def pad16(s):
     "PKCS#7 padding"
@@ -79,7 +52,7 @@ def name_decode(eme, name):
         print('note: corrupted gocryptfs.diriv')
         return b''
     bname = os.path.basename(name)
-    bname = unb64(bytes(bname,'utf-8'))
+    bname = base64.urlsafe_b64decode(bytes(bname+'==','utf-8'))
     bname = eme.decrypt_iv(diriv, bname)
     bname = unpad16(bname)
     try:
