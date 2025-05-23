@@ -1,3 +1,11 @@
+TODO replace me
+
+Based on the work of `gocryptfs-inspect`, see
+- <https://github.com/maxpat78/gocryptfs-inspect>
+- <https://github.com/slackner/gocryptfs-inspect>
+
+---
+
 gocryptfs Inspection Tools
 ==========================
 
