@@ -14,8 +14,6 @@ import getpass
 import hashlib
 import json
 import os
-import re
-import socket
 import struct
 import sys
 
@@ -370,6 +368,21 @@ def create_folders_with_diriv(inputdir, outputdir):
         create_gocryptfs_diriv(new_absolute_path)
 
 
+def handle_long_names(ename, outputfile):
+    if len(ename) <= 255:
+        return ename
+    # gets the SHA-256 hash, base64 encoded, of the encrypted longname
+    hash_ = base64.urlsafe_b64encode(
+            SHA256.new(ename.encode()).digest()).strip(b'=').decode()
+    # stores the encrypted longname
+    lname = os.path.join(os.path.dirname(outputfile),
+                         f"gocryptfs.longname.{hash_}.name")
+    with open(lname, "w") as fp:
+        fp.write(ename)
+    # replace with the fake shortname
+    return 'gocryptfs.longname.' + hash_
+
+
 def encrypt_file(master_key, inputfile, outputfile):
     eme_key = get_emekey(master_key)
     eme = AES256_EME(eme_key)
@@ -380,15 +393,7 @@ def encrypt_file(master_key, inputfile, outputfile):
         ename = name_encode(eme, outputfile)
 
         # Handle very long encoded names
-        if len(ename) > 255:
-            # gets the SHA-256 hash, base64 encoded, of the encrypted longname
-            hash = base64.urlsafe_b64encode(SHA256.new(ename.encode()).digest()).strip(b'=').decode()
-            # stores the encrypted longname
-            lname = os.path.join(os.path.dirname(outputfile), f"gocryptfs.longname.{hash}.name")
-            with open(lname, "w") as fp:
-                fp.write(ename)
-            # replace with the fake shortname
-            ename = 'gocryptfs.longname.' + hash
+        ename = handle_long_names(ename, outputfile)
 
         ename = os.path.join(os.path.dirname(outputfile), ename)
         with open(ename, 'wb') as fpout:
@@ -413,14 +418,10 @@ def main():
     create_gocryptfs_diriv(outputdir)
 
     # First create the folders, then fill with files
-    # TODO folder encryption missing, thus flat files for now
-    # create_gocryptfs_diriv(inputdir, outputdir)
     for rf in get_all_relative_files(inputdir):
         print("Processing", rf)
         ipath = os.path.join(inputdir, rf)
         opath = os.path.join(outputdir, rf)
-        print(f"{ipath=}")
-        print(f"{opath=}")
         encrypt_file(master_key, ipath, opath)
 
 
