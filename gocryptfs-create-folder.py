@@ -1,4 +1,4 @@
-#/usr/bin/env python3
+#!/usr/bin/env python3
 
 # gocryptfs-create-folder
 #
@@ -247,7 +247,7 @@ def get_user_password():
         print("Passwords are not the same")
 
 
-def create_gocryptfs_conf(inputdir, password: str):
+def create_gocryptfs_conf(outputdir, password: str):
     """
     This is an example `gocryptfs.conf`:
     ```
@@ -329,14 +329,14 @@ def create_gocryptfs_conf(inputdir, password: str):
         ]
     }
 
-    with open(os.path.join(inputdir, "gocryptfs.conf"), "w") as fp:
+    with open(os.path.join(outputdir, "gocryptfs.conf"), "w") as fp:
         json.dump(config_dict, fp, indent=4)
 
     return master_key
 
 
-def create_gocryptfs_diriv(inputdir):
-    with open(os.path.join(inputdir, "gocryptfs.diriv"), "wb") as fp:
+def create_gocryptfs_diriv(d):
+    with open(os.path.join(d, "gocryptfs.diriv"), "wb") as fp:
         fp.write(os.urandom(16))
 
 
@@ -383,9 +383,7 @@ def handle_long_names(ename, outputfile):
     return 'gocryptfs.longname.' + hash_
 
 
-def encrypt_file(master_key, inputfile, outputfile):
-    eme_key = get_emekey(master_key)
-    eme = AES256_EME(eme_key)
+def encrypt_file(master_key, inputfile, outputfile, eme):
     key = HKDF(master_key, salt=b"", key_len=32, hashmod=SHA256,
                context=b"AES-GCM file content encryption")
 
@@ -410,19 +408,50 @@ def encrypt_file(master_key, inputfile, outputfile):
                 n += 1
 
 
+def process_directory_recursively(inputdir, outputdir, master_key, eme):
+    """
+    In order to process ciphered subdirectories, which result in differing
+    paths, we have to recursively process the directory tree
+    """
+    entries = os.listdir(inputdir)
+    subdirs = [d for d in entries if os.path.isdir(os.path.join(inputdir, d))]
+    files = [f for f in entries if os.path.isfile(os.path.join(inputdir, f))]
+    print(f"{inputdir=} {outputdir=}")
+
+    # TODO(#1) Handle non-file, non-directory types such as symlinks
+    assert set(subdirs + files) == set(entries)
+
+    for filename in files:
+        ipath = os.path.join(inputdir, filename)
+        opath = os.path.join(outputdir, filename)
+        print(f"{ipath=} {opath=}")
+        encrypt_file(master_key, ipath, opath, eme)
+    for dirname in subdirs:
+        ipath = os.path.join(inputdir, dirname)
+        opath = os.path.join(outputdir, dirname)
+        print(f"{ipath=} {opath=}")
+
+        # TODO unify with encrypt_file
+        ename = name_encode(eme, opath)
+        ename = handle_long_names(ename, opath)
+
+        ename = os.path.join(os.path.dirname(opath), ename)
+        os.makedirs(ename, exist_ok=True)
+        create_gocryptfs_diriv(ename)
+
+        process_directory_recursively(ipath, ename, master_key, eme)
+
+
 def main():
     outputdir, inputdir = parse_cli_or_die()
     password = get_user_password()
 
     master_key = create_gocryptfs_conf(outputdir, password)
     create_gocryptfs_diriv(outputdir)
+    eme_key = get_emekey(master_key)
+    eme = AES256_EME(eme_key)
 
-    # First create the folders, then fill with files
-    for rf in get_all_relative_files(inputdir):
-        print("Processing", rf)
-        ipath = os.path.join(inputdir, rf)
-        opath = os.path.join(outputdir, rf)
-        encrypt_file(master_key, ipath, opath)
+    process_directory_recursively(inputdir, outputdir, master_key, eme)
 
 
 if __name__ == "__main__":
