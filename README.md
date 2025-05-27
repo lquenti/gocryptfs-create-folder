@@ -1,6 +1,6 @@
 # gocryptfs Create Folder
 
-Creates a gocryptfs folder based on a plain folder without relying on gocryptfs/FUSE.
+Creates a [gocryptfs](https://github.com/rfjakob/gocryptfs) folder based on a plain folder without relying on gocryptfs/FUSE.
 
 ## Install
 
@@ -16,7 +16,9 @@ python3 gocryptfs-create-folder.py OUTPUTDIR INPUTDIR
 
 ## Acknowledgement
 
-Based on the **great** work of `gocryptfs-inspect`, see
+Of course, intended to be used with the insanely good [gocryptfs](https://github.com/rfjakob/gocryptfs).
+
+This repo is based on the **great** work of `gocryptfs-inspect`, see
 - <https://github.com/maxpat78/gocryptfs-inspect>
 - <https://github.com/slackner/gocryptfs-inspect>
 
