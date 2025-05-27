@@ -383,18 +383,21 @@ def handle_long_names(ename, outputfile):
     return 'gocryptfs.longname.' + hash_
 
 
+def get_encrypted_output_path(eme, input_path, output_path):
+    ename = name_encode(eme, output_path)
+    ename = handle_long_names(ename, output_path)
+    return os.path.join(os.path.dirname(output_path), ename)
+
+
 def encrypt_file(master_key, inputfile, outputfile, eme):
+    """Encrypt a single file"""
     key = HKDF(master_key, salt=b"", key_len=32, hashmod=SHA256,
                context=b"AES-GCM file content encryption")
 
     with open(inputfile, 'rb') as fpin:
-        ename = name_encode(eme, outputfile)
+        encrypted_output_path = get_encrypted_output_path(eme, inputfile, outputfile)
 
-        # Handle very long encoded names
-        ename = handle_long_names(ename, outputfile)
-
-        ename = os.path.join(os.path.dirname(outputfile), ename)
-        with open(ename, 'wb') as fpout:
+        with open(encrypted_output_path, 'wb') as fpout:
             fpout.write(b'\x00\x02')  # magic couple
             fileid = os.urandom(16)
             fpout.write(fileid)
@@ -406,6 +409,14 @@ def encrypt_file(master_key, inputfile, outputfile, eme):
                     break
                 fpout.write(encrypt_gcm_block(key, n, fileid, buf))
                 n += 1
+
+
+def create_encrypted_directory(eme, input_path, output_path):
+    """Create an encrypted directory with proper naming and diriv"""
+    encrypted_output_path = get_encrypted_output_path(eme, input_path, output_path)
+    os.makedirs(encrypted_output_path, exist_ok=True)
+    create_gocryptfs_diriv(encrypted_output_path)
+    return encrypted_output_path
 
 
 def process_directory_recursively(inputdir, outputdir, master_key, eme):
@@ -424,22 +435,15 @@ def process_directory_recursively(inputdir, outputdir, master_key, eme):
     for filename in files:
         ipath = os.path.join(inputdir, filename)
         opath = os.path.join(outputdir, filename)
-        print(f"{ipath=} {opath=}")
+        print(f"File: {ipath=} {opath=}")
         encrypt_file(master_key, ipath, opath, eme)
     for dirname in subdirs:
         ipath = os.path.join(inputdir, dirname)
         opath = os.path.join(outputdir, dirname)
-        print(f"{ipath=} {opath=}")
+        print(f"Dir: {ipath=} {opath=}")
 
-        # TODO unify with encrypt_file
-        ename = name_encode(eme, opath)
-        ename = handle_long_names(ename, opath)
-
-        ename = os.path.join(os.path.dirname(opath), ename)
-        os.makedirs(ename, exist_ok=True)
-        create_gocryptfs_diriv(ename)
-
-        process_directory_recursively(ipath, ename, master_key, eme)
+        encrypted_dir_path = create_encrypted_directory(eme, ipath, opath)
+        process_directory_recursively(ipath, encrypted_dir_path, master_key, eme)
 
 
 def main():
