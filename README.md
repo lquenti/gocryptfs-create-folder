@@ -5,7 +5,7 @@ Creates a [gocryptfs](https://github.com/rfjakob/gocryptfs) folder based on a pl
 ## Install
 
 ```
-pip install pycryptdome
+pip install pycryptodome
 ```
 
 ## Usage
