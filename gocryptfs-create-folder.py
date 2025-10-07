@@ -169,12 +169,14 @@ def get_emekey(masterkey):
 
 
 def pad16(s):
-    "PKCS#7 padding"
-    blocks = (len(s)+15) // 16
-    added = blocks*16 - len(s)
-    r = bytearray(added.to_bytes()) * (blocks*16)
-    r[:len(s)] = s  # s must be bytes
-    return r
+    "PKCS#7 padding for 16-byte blocks"
+    block_size = 16
+    # Calculate bytes to add
+    added = block_size - (len(s) % block_size)
+    # Create the padding byte (e.g., if added=14, this is b'\x0e')
+    padding_byte = bytes([added])
+    # Append the padding byte, repeated 'added' times
+    return s + padding_byte * added
 
 
 def name_encode(eme, outputfile):
