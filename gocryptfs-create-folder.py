@@ -5,7 +5,7 @@
 # Creates a gocryptfs folder based on a plain folder without relying on
 # gocryptfs/FUSE.
 #
-# Link to Repository: <https://codeberg.org/LGLQ/gocryptfs-create-folder>
+# Link to Repository: <https://github.com/lquenti/gocryptfs-create-folder>
 # SPDX Identifier: MIT
 
 import argparse
